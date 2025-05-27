@@ -34,6 +34,17 @@ The "Cron" method ensures that background tasks, such as file indexing, notifica
 
 I am using full VM's backup and recommend using it.
 
+## Configuring Nextcloud parameters. 
+If you read some manual from Nextcloud, you can find some examples like "occ config:system:set ....." and to do this with containerized Nextcloud you need to do that:
+```
+docker exec -u www-data -ti nextcloud_app bash
+```
+All occ command runs from php, so if you run command below you will see possibe occ commands.
+```
+php occ -V
+```
+This will show Nextcloud's version.
+
 ## Disabling Skeleton Directory for New Users
 
 New Nextcloud users typically receive default files and folders upon account creation, which are sourced from the skeleton directory. Disabling this feature can be useful to provide a clean start for users and reduce disk usage. Use the `occ config:system:set` command to set the skeleton directory path to an empty string, effectively disabling the default content for new users.
