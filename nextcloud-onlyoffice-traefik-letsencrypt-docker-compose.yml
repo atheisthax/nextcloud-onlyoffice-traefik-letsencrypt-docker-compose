@@ -1,33 +1,9 @@
-networks:
-  nextcloud-network:
-    external: true
-  onlyoffice-network:
-    external: true
-  traefik-network:
-    external: true
-
-volumes:
-  nextcloud-data:
-  redis-nextcloud-data:
-  redis-onlyoffice-document-data:
-  rabbitmq-onlyoffice-document-data:
-  onlyoffice-document-data:
-  onlyoffice-document-log:
-  onlyoffice-document-cache-files:
-  onlyoffice-document-public-files:
-  onlyoffice-document-fonts:
-  nextcloud-postgres:
-  nextcloud-postgres-backup:
-  onlyoffice-document-postgres:
-  nextcloud-data-backups:
-  nextcloud-database-backups:
-  traefik-certificates:
-
 services:
   postgres-nextcloud:
+    container_name: nextcloud_db
     image: ${NEXTCLOUD_POSTGRES_IMAGE_TAG}
     volumes:
-      - nextcloud-postgres:/var/lib/postgresql/data
+      - ./nextcloud/postgres:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: ${NEXTCLOUD_DB_NAME}
       POSTGRES_USER: ${NEXTCLOUD_DB_USER}
@@ -43,10 +19,11 @@ services:
     restart: unless-stopped
 
   redis-nextcloud:
+    container_name: nextcloud_redis
     image: ${NEXTCLOUD_REDIS_IMAGE_TAG}
     command: ["redis-server", "--requirepass", "$NEXTCLOUD_REDIS_PASSWORD"]
     volumes:
-      - redis-nextcloud-data:/data
+      - ./nextcloud/redis-data:/data
     networks:
       - nextcloud-network
     healthcheck:
@@ -58,9 +35,11 @@ services:
     restart: unless-stopped
 
   nextcloud:
+    container_name: nextcloud_app
+    hostname: nextcloud
     image: ${NEXTCLOUD_IMAGE_TAG}
     volumes:
-      - nextcloud-data:${DATA_PATH}
+      - ./nextcloud/data:${DATA_PATH}
     environment:
       TZ: ${NEXTCLOUD_TIMEZONE}
       POSTGRES_HOST: postgres-nextcloud
@@ -134,17 +113,19 @@ services:
         condition: service_healthy
 
   nextcloud-cron:
+    container_name: nextcloud_cron
     image: ${NEXTCLOUD_IMAGE_TAG}
     entrypoint: /cron.sh
     volumes:
-      - nextcloud-data:${DATA_PATH}
+      - ./nextcloud/data:${DATA_PATH}
     networks:
       - nextcloud-network
 
-  postgres-onlyoffice-document:
+  postgres-onlyoffice:
+    container_name: onlyoffice_db
     image: ${ONLYOFFICE_DOCUMENT_POSTGRES_IMAGE_TAG}
     volumes:
-      - onlyoffice-document-postgres:/var/lib/postgresql/data
+      - ./onlyoffice/postgres:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: ${ONLYOFFICE_DOCUMENT_DB_NAME}
       POSTGRES_USER: ${ONLYOFFICE_DOCUMENT_DB_USER}
@@ -159,10 +140,12 @@ services:
       start_period: 60s
     restart: unless-stopped
 
-  redis-onlyoffice-document:
+  redis-onlyoffice:
+    container_name: onlyoffice_redis
+    hostname: redis-onlyoffice
     image: ${ONLYOFFICE_DOCUMENT_REDIS_IMAGE_TAG}
     volumes:
-      - redis-onlyoffice-document-data:/data
+      - ./onlyoffice/redis-data:/data
     networks:
       - onlyoffice-network
     healthcheck:
@@ -173,10 +156,12 @@ services:
       start_period: 60s
     restart: unless-stopped
 
-  rabbitmq-onlyoffice-document:
+  rabbitmq-onlyoffice:
+    container_name: onlyoffice_rabbitmq
+    hostname: rabbitmq-onlyoffice
     image: ${RABBITMQ_IMAGE_TAG}
     volumes:
-      - rabbitmq-onlyoffice-document-data:/var/lib/rabbitmq
+      - ./onlyoffice/rabbitmq-data:/var/lib/rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
@@ -190,24 +175,26 @@ services:
       start_period: 90s
     restart: unless-stopped
 
-  onlyoffice-document:
+  onlyoffice:
+    container_name: onlyoffice_app
+    hostname: onlyoffice
     image: ${ONLYOFFICE_DOCUMENT_IMAGE_TAG}
     volumes:
-      - onlyoffice-document-data:/var/www/onlyoffice/Data
-      - onlyoffice-document-log:/var/log/onlyoffice
-      - onlyoffice-document-cache-files:/var/lib/onlyoffice/documentserver/App_Data/cache/files
-      - onlyoffice-document-public-files:/var/www/onlyoffice/documentserver-example/public/files
-      - onlyoffice-document-fonts:/usr/share/fonts
+      - ./onlyoffice/data:/var/www/onlyoffice/Data
+      - ./onlyoffice/log:/var/log/onlyoffice
+      - ./onlyoffice/cache-files:/var/lib/onlyoffice/documentserver/App_Data/cache/files
+      - ./onlyoffice/public-files:/var/www/onlyoffice/documentserver-example/public/files
+      - ./onlyoffice/fonts:/usr/share/fonts
     environment:
       DB_TYPE: postgres
-      DB_HOST: postgres-onlyoffice-document
+      DB_HOST: postgres-onlyoffice
       DB_PORT: 5432
       DB_NAME: ${ONLYOFFICE_DOCUMENT_DB_NAME}
       DB_USER: ${ONLYOFFICE_DOCUMENT_DB_USER}
       DB_PWD: ${ONLYOFFICE_DOCUMENT_DB_PASSWORD}
       AMQP_TYPE: rabbitmq
-      AMQP_URI: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq-onlyoffice-document
-      REDIS_SERVER_HOST: redis-onlyoffice-document
+      AMQP_URI: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq-onlyoffice/?frameMax=0
+      REDIS_SERVER_HOST: redis-onlyoffice
       REDIS_SERVER_PORT: 6379
       JWT_ENABLED: true
       JWT_SECRET: ${ONLYOFFICE_DOCUMENT_JWT_SECRET}
@@ -221,54 +208,55 @@ services:
       # Enable Traefik for this container
       - "traefik.enable=true"
       # Match incoming requests on the specific hostname for OnlyOffice Document Server
-      - "traefik.http.routers.onlyoffice-document.rule=Host(`${ONLYOFFICE_DOCUMENT_HOSTNAME}`)"
+      - "traefik.http.routers.onlyoffice.rule=Host(`${ONLYOFFICE_DOCUMENT_HOSTNAME}`)"
       # Assign the router to a named Traefik service
-      - "traefik.http.routers.onlyoffice-document.service=onlyoffice-document"
+      - "traefik.http.routers.onlyoffice.service=onlyoffice"
       # Use the 'websecure' (HTTPS) entry point
-      - "traefik.http.routers.onlyoffice-document.entrypoints=websecure"
+      - "traefik.http.routers.onlyoffice.entrypoints=websecure"
       # Define the internal container port for routing
-      - "traefik.http.services.onlyoffice-document.loadbalancer.server.port=80"
+      - "traefik.http.services.onlyoffice.loadbalancer.server.port=80"
       # Enable TLS on this router
-      - "traefik.http.routers.onlyoffice-document.tls=true"
+      - "traefik.http.routers.onlyoffice.tls=true"
       # Use Let's Encrypt for certificate management
-      - "traefik.http.routers.onlyoffice-document.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.onlyoffice.tls.certresolver=letsencrypt"
       # Apply middlewares for compression and security headers
-      - "traefik.http.routers.onlyoffice-document.middlewares=compresstraefik,onlyoffice-document-header"
+      - "traefik.http.routers.onlyoffice.middlewares=compresstraefik,onlyoffice-header"
       # Define settings for the compression middleware
       - "traefik.http.middlewares.compresstraefik.compress=true"
       # Security headers specifically for OnlyOffice Document Server
-      - "traefik.http.middlewares.onlyoffice-document-header.headers.referrerPolicy=no-referrer"
-      - "traefik.http.middlewares.onlyoffice-document-header.headers.stsSeconds=15552000"
-      - "traefik.http.middlewares.onlyoffice-document-header.headers.forceSTSHeader=true"
-      - "traefik.http.middlewares.onlyoffice-document-header.headers.stsPreload=true"
-      - "traefik.http.middlewares.onlyoffice-document-header.headers.stsIncludeSubdomains=true"
-      - "traefik.http.middlewares.onlyoffice-document-header.headers.browserXssFilter=true"
-      - "traefik.http.middlewares.onlyoffice-document-header.headers.customRequestHeaders.X-Forwarded-Proto=https"
+      - "traefik.http.middlewares.onlyoffice-header.headers.referrerPolicy=no-referrer"
+      - "traefik.http.middlewares.onlyoffice-header.headers.stsSeconds=15552000"
+      - "traefik.http.middlewares.onlyoffice-header.headers.forceSTSHeader=true"
+      - "traefik.http.middlewares.onlyoffice-header.headers.stsPreload=true"
+      - "traefik.http.middlewares.onlyoffice-header.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.onlyoffice-header.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.onlyoffice-header.headers.customRequestHeaders.X-Forwarded-Proto=https"
       # Specify which Docker network Traefik should use for routing
       - "traefik.docker.network=traefik-network"
     restart: unless-stopped
     depends_on:
-      postgres-onlyoffice-document:
+      postgres-onlyoffice:
         condition: service_healthy
-      rabbitmq-onlyoffice-document:
+      rabbitmq-onlyoffice:
         condition: service_healthy
       nextcloud:
         condition: service_healthy
 
   traefik:
+    container_name: nextcloud_proxy
     image: ${TRAEFIK_IMAGE_TAG}
     command:
       # Set the log level (DEBUG, INFO, WARN, ERROR)
       - "--log.level=${TRAEFIK_LOG_LEVEL}"
       # Enable the built-in API and web-based dashboard
       - "--api.dashboard=true"
+      # traefik web interface can be accessed via 8080 port
+      - "--api.insecure=true"
       # Enable the /ping endpoint so we can health-check Traefik
       - "--ping=true"
       # Assign the /ping endpoint to a dedicated entry point on port 8082
       - "--ping.entrypoint=ping"
       - "--entrypoints.ping.address=:8082"
-      # Define the primary HTTP entry point on port 80
-      - "--entrypoints.web.address=:80"
       # Define the secure (HTTPS) entry point on port 443
       - "--entrypoints.websecure.address=:443"
       # HTTP -> HTTPS redirect at entrypoint level
@@ -283,6 +271,8 @@ services:
       - "--providers.docker.exposedbydefault=false"
       # Use ACME (Let's Encrypt) to generate/renew certificates via TLS challenge
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      # Uncomment string below to use staging letsencrypt certificate (allows you to try for many times)
+      #- "--certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
       # The email address used by Let's Encrypt for renewal notices
       - "--certificatesresolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL}"
       # The file where ACME certificates are stored inside the container
@@ -297,11 +287,11 @@ services:
       - "--global.sendanonymoususage=false"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik-certificates:/etc/traefik/acme
+      - ./traefik-certificates:/etc/traefik/acme
     networks:
       - traefik-network
     ports:
-      - "80:80"
+      - "8080:8080"
       - "443:443"
     healthcheck:
       test: ["CMD", "wget", "http://localhost:8082/ping","--spider"]
@@ -309,55 +299,12 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
-    labels:
-      # Enable Traefik for this container
-      - "traefik.enable=true"
-      # A router to expose the Traefik dashboard
-      - "traefik.http.routers.dashboard.rule=Host(`${TRAEFIK_HOSTNAME}`)"
-      - "traefik.http.routers.dashboard.entrypoints=websecure"
-      - "traefik.http.routers.dashboard.tls=true"
-      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.dashboard.service=api@internal"
-      # Basic Authentication for the Traefik dashboard
-      - "traefik.http.routers.dashboard.middlewares=authtraefik"
-      - "traefik.http.middlewares.authtraefik.basicauth.users=${TRAEFIK_BASIC_AUTH}"
-      # Specify the internal server port to the dashboard service
-      - "traefik.http.services.dashboard.loadbalancer.server.port=8080"
-      # Pass the original Host header to the backend
-      - "traefik.http.services.dashboard.loadbalancer.passhostheader=true"
     restart: unless-stopped
 
-  backups:
-    image: ${NEXTCLOUD_POSTGRES_IMAGE_TAG}
-    command: >-
-      sh -c 'sleep $BACKUP_INIT_SLEEP &&
-      while true; do
-        pg_dump -h postgres -p 5432 -d $NEXTCLOUD_DB_NAME -U $NEXTCLOUD_DB_USER | gzip > $POSTGRES_BACKUPS_PATH/$POSTGRES_BACKUP_NAME-$(date "+%Y-%m-%d_%H-%M").gz &&
-        tar -zcpf $DATA_BACKUPS_PATH/$DATA_BACKUP_NAME-$(date "+%Y-%m-%d_%H-%M").tar.gz $DATA_PATH &&
-        find $POSTGRES_BACKUPS_PATH -type f -mtime +$POSTGRES_BACKUP_PRUNE_DAYS | xargs rm -f &&
-        find $DATA_BACKUPS_PATH -type f -mtime +$DATA_BACKUP_PRUNE_DAYS | xargs rm -f;
-        sleep $BACKUP_INTERVAL; done'
-    volumes:
-      - nextcloud-postgres-backup:/var/lib/postgresql/data
-      - nextcloud-data:${DATA_PATH}
-      - nextcloud-data-backups:${DATA_BACKUPS_PATH}
-      - nextcloud-database-backups:${POSTGRES_BACKUPS_PATH}
-    environment:
-      NEXTCLOUD_DB_NAME: ${NEXTCLOUD_DB_NAME}
-      NEXTCLOUD_DB_USER: ${NEXTCLOUD_DB_USER}
-      PGPASSWORD: ${NEXTCLOUD_DB_PASSWORD}
-      BACKUP_INIT_SLEEP: ${BACKUP_INIT_SLEEP}
-      BACKUP_INTERVAL: ${BACKUP_INTERVAL}
-      POSTGRES_BACKUP_PRUNE_DAYS: ${POSTGRES_BACKUP_PRUNE_DAYS}
-      DATA_BACKUP_PRUNE_DAYS: ${DATA_BACKUP_PRUNE_DAYS}
-      POSTGRES_BACKUPS_PATH: ${POSTGRES_BACKUPS_PATH}
-      DATA_BACKUPS_PATH: ${DATA_BACKUPS_PATH}
-      DATA_PATH: ${DATA_PATH}
-      POSTGRES_BACKUP_NAME: ${POSTGRES_BACKUP_NAME}
-      DATA_BACKUP_NAME: ${DATA_BACKUP_NAME}
-    networks:
-      - nextcloud-network
-    restart: unless-stopped
-    depends_on:
-      postgres-nextcloud:
-        condition: service_healthy
+networks:
+  traefik-network:
+    name: traefik-network
+  nextcloud-network:
+    name: nextcloud-network
+  onlyoffice-network:
+    name: onlyoffice-network
