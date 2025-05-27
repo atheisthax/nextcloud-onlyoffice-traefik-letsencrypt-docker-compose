@@ -9,8 +9,9 @@ Place project files to folder, which will contain all project files (databases, 
 
 Deploy Nextcloud using Docker Compose:
 
-`docker compose -f nextcloud-onlyoffice-traefik-letsencrypt-docker-compose.yml -p nextcloud up -d`
-
+```
+docker compose -f nextcloud-onlyoffice-traefik-letsencrypt-docker-compose.yml -p nextcloud up -d
+```
 ## Background Jobs Using Cron
 
 To ensure your Nextcloud instance operates efficiently, it's important to use the "Cron" method to execute background jobs. A dedicated Docker container has already been set up in your environment to handle these tasks.
@@ -37,30 +38,22 @@ I am using full VM's backup and recommend using it.
 
 New Nextcloud users typically receive default files and folders upon account creation, which are sourced from the skeleton directory. Disabling this feature can be useful to provide a clean start for users and reduce disk usage. Use the `occ config:system:set` command to set the skeleton directory path to an empty string, effectively disabling the default content for new users.
 
-List all running containers to find the one running Nextcloud:
-
-`docker ps`
-
 Run the command below.
-
-`docker exec -u www-data -it nextcloud_app php occ config:system:set skeletondirectory --value=''`
-
+```
+docker exec -u www-data -it nextcloud_app php occ config:system:set skeletondirectory --value=''
+```
 ## Fixing Database Index Issues
 
 Your Nextcloud database might be missing some indexes. This situation can occur because adding indexes to large tables can take considerable time, so they are not added automatically. Running `occ db:add-missing-indices` manually allows these indexes to be added while the instance continues running. Adding these indexes can significantly speed up queries on tables like `filecache` and `systemtag_object_mapping`, which might be missing indexes such as `fs_storage_path_prefix` and `systag_by_objectid`.
 
-List all running containers to find the one running Nextcloud:
-
-`docker ps`
-
 Run the command below.
-
-`docker exec -u www-data -it nextcloud_app php occ db:add-missing-indices`
-
+```
+docker exec -u www-data -it nextcloud_app php occ db:add-missing-indices
+```
 Confirm the indices were added by checking the status:
-
-`docker exec -u www-data -it nextcloud_app php occ status`
-
+```
+docker exec -u www-data -it nextcloud_app php occ status
+```
 - Operations on large databases can take time; consider scheduling during low-usage periods.
 - Always backup your database before making changes.
 
@@ -70,36 +63,38 @@ When files are added directly to Nextcloud's data directory through methods othe
 
 To make all manually added files visible in the UI, you can use the `occ files:scan` command to update Nextcloud's file index. This command should be used with care as it can impact server performance, especially on larger installations.
 
-List all running containers to find the one running Nextcloud:
-
-`docker ps`
-
 Run the command below.
-
-`docker exec -u www-data -it nextcloud_app php occ files:scan --all`
-
+```
+docker exec -u www-data -it nextcloud_app php occ files:scan --all
+```
 - Be aware that this command can significantly affect performance during its execution. It is advisable to run this scan during periods of low user activity.
 - Always ensure that you have up-to-date backups before performing any operations that affect the filesystem or database.
 
-Configure Nextcloud with OnlyOffice. Go inside the container :
-
-`docker exec -u www-data -ti nextcloud_app bash`
-
+## Configure Nextcloud with OnlyOffice. 
+Go inside the container :
+```
+docker exec -u www-data -ti nextcloud_app bash
+```
 allow to set onlyoffice as local container. Within the nextcloud container :
-
-`php occ --no-warnings config:system:set allow_local_remote_servers --value=true`
-
+```
+php occ --no-warnings config:system:set allow_local_remote_servers --value=true
+```
 add hostame container and domain to trusted domain :
 
-`php occ --no-warnings config:system:set trusted_domains 1 --value="onlyoffice"
+```
+php occ --no-warnings config:system:set trusted_domains 1 --value="onlyoffice"
 php occ --no-warnings config:system:set trusted_domains 2 --value="nextcloud"
 php occ --no-warnings config:system:set trusted_domains 3 --value="<YOUR NEXTCLOUD_DOMAIN>"
-php occ --no-warnings config:system:set trusted_domains 4 --value="<YOUR ONLYOFFICE DOMAIN>"`
+php occ --no-warnings config:system:set trusted_domains 4 --value="<YOUR ONLYOFFICE DOMAIN>"
+```
 
 go to your nextlcoud instance, install it, go to app and add Onlyoffice from the app store. Configure it
 
-`php occ --no-warnings config:system:set onlyoffice DocumentServerUrl --value="http://<ONLYOFFICE.DOMAIN>"
+```
+php occ --no-warnings config:system:set onlyoffice DocumentServerUrl --value="http://<ONLYOFFICE.DOMAIN>"
 php occ --no-warnings config:system:set onlyoffice DocumentServerInternalUrl --value="http://onlyoffice/"
 php occ --no-warnings config:system:set onlyoffice StorageUrl --value="http://nextcloud/"
+php occ --no-warnings config:system:set onlyoffice jwt_secret --value="<JWT SECRET FROM .env FILE>"
 php occ --no-warnings config:system:get onlyoffice
-php occ onlyoffice:documentserver --check`
+php occ onlyoffice:documentserver --check
+```
