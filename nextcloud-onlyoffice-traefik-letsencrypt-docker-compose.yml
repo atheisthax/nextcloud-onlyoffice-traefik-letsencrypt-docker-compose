@@ -3,7 +3,7 @@ services:
     container_name: nextcloud_db
     image: ${NEXTCLOUD_POSTGRES_IMAGE_TAG}
     volumes:
-      - ./nextcloud/postgres:/var/lib/postgresql/data
+      - ./nextcloud/postgres:/var/lib/postgresql
     environment:
       POSTGRES_DB: ${NEXTCLOUD_DB_NAME}
       POSTGRES_USER: ${NEXTCLOUD_DB_USER}
@@ -125,7 +125,7 @@ services:
     container_name: onlyoffice_db
     image: ${ONLYOFFICE_DOCUMENT_POSTGRES_IMAGE_TAG}
     volumes:
-      - ./onlyoffice/postgres:/var/lib/postgresql/data
+      - ./onlyoffice/postgres:/var/lib/postgresql
     environment:
       POSTGRES_DB: ${ONLYOFFICE_DOCUMENT_DB_NAME}
       POSTGRES_USER: ${ONLYOFFICE_DOCUMENT_DB_USER}
