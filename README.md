@@ -109,3 +109,8 @@ php occ --no-warnings config:system:set onlyoffice jwt_secret --value="<JWT SECR
 php occ --no-warnings config:system:get onlyoffice
 php occ onlyoffice:documentserver --check
 ```
+
+## Configure Nextcloud with local DrawIO. 
+
+Install Diagramming app.
+Then go to administration settings -> Diagramming and set Editor URL as you set in .env file ( https://drawio.server.mail )
