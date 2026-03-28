@@ -1,0 +1,17 @@
+http:
+  routers:
+    external-router:
+      rule: "Host(`server.mail`)" # Replace with your desired domain
+      entryPoints:
+        - websecure # or 'web' if not using HTTPS
+      service: external-service
+      # Optional: Add TLS configuration if needed
+      tls:
+         certResolver: letsencrypt
+
+  services:
+    external-service:
+      loadBalancer:
+        servers:
+          # Define the external URL (IP address and port)
+          - url: "http://123.456.78:90" # Replace with your external host's IP and port
