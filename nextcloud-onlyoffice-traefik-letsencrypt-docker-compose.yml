@@ -290,6 +290,9 @@ services:
       # Prevent automatic exposure of all containers; only expose containers
       # with "traefik.enable=true"
       - "--providers.docker.exposedbydefault=false"
+      # dynamic file provider config
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"      
       # Use ACME (Let's Encrypt) to generate/renew certificates via TLS challenge
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
       # Uncomment string below to use staging letsencrypt certificate (allows you to try for many times)
@@ -307,6 +310,8 @@ services:
       # Disable sending anonymous usage data to the Traefik maintainers
       - "--global.sendanonymoususage=false"
     volumes:
+      # dynamic host config file
+      - ./dynamic:/etc/traefik/dynamic:ro   
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik-certificates:/etc/traefik/acme
     networks:
