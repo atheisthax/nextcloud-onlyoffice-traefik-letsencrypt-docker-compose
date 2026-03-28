@@ -242,6 +242,27 @@ services:
       nextcloud:
         condition: service_healthy
 
+  drawio:
+    image: jgraph/drawio:latest
+    container_name: drawio
+    restart: unless-stopped
+    networks:
+      - traefik-network # Use the same network as your Traefik instance
+    labels:
+      # Enable Traefik for this service
+      - "traefik.enable=true"
+      # Define the router name
+      - "traefik.http.routers.drawio.rule=Host(`${DRAWIO_HOSTNAME}`)"
+      # Set entrypoints (websecure for HTTPS is standard)
+      - "traefik.http.routers.drawio.entrypoints=websecure"
+      # Enable TLS
+      - "traefik.http.routers.drawio.tls=true"
+      # Optional: Use Let's Encrypt resolver defined in your Traefik config
+      # - "traefik.http.routers.drawio.tls.certresolver=le"
+      # Define the service and the internal container port (Drawio runs on 8080)
+      - "traefik.http.services.drawio.loadbalancer.server.port=8080"
+      - "traefik.http.routers.drawio.tls.certresolver=letsencrypt"
+
   traefik:
     container_name: nextcloud_proxy
     image: ${TRAEFIK_IMAGE_TAG}
