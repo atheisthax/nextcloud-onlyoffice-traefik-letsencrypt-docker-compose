@@ -68,6 +68,12 @@ docker exec -u www-data -it nextcloud_app php occ status
 - Operations on large databases can take time; consider scheduling during low-usage periods.
 - Always backup your database before making changes.
 
+## Fixing Maintenance Window Issue
+
+Run the command below.
+```
+docker exec -u www-data -it nextcloud_app php occ config:system:set maintenance_window_start --type=integer --value=1
+```
 ## Rescanning Files
 
 When files are added directly to Nextcloud's data directory through methods other than the web interface or sync clients (e.g., via FTP or direct server access), they are not automatically visible in the Nextcloud user interface. This happens because these files bypass Nextcloud's normal indexing process.
